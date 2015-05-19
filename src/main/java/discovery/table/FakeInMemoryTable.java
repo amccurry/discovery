@@ -18,19 +18,65 @@ package discovery.table;
 
 import java.util.List;
 
+import discovery.DiscoveryResultSet;
 import discovery.Table;
+import discovery.request.DataRequest;
 
 public class FakeInMemoryTable extends Table {
-  
+
+  private String _id;
+  private List<String> _cols;
+
+  public FakeInMemoryTable(String id, List<String> columnNames) {
+    _id = id;
+    _cols = columnNames;
+  }
+
   public long getRecordTotal() {
     return 1000000000000L;
   }
 
   public List<String> getColumnNames() {
-    throw new RuntimeException("Not implemented.");
+    return _cols;
   }
 
   public String getTableId() {
-    throw new RuntimeException("Not implemented.");
+    return _id;
+  }
+
+  @Override
+  public DiscoveryResultSet executeRequest(DataRequest dataRequest) {
+    System.out.println(dataRequest);
+    long start = dataRequest.getStart();
+    int length = dataRequest.getLength();
+    return new BaseDiscoveryResultSet(dataRequest) {
+
+      @Override
+      public long getRecordCount() {
+        return 100000l;
+      }
+
+      private int count = 0;
+
+      @Override
+      public boolean next() {
+        if (count < length) {
+          count++;
+          return true;
+        }
+        return false;
+      }
+
+      @Override
+      public String getRowId() {
+        return Long.toString(start + count);
+      }
+
+      @Override
+      public Object getColumnValue(String columnName) {
+        return columnName + " " + getRowId();
+      }
+
+    };
   }
 }

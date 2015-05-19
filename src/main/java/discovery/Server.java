@@ -21,6 +21,7 @@ import static spark.Spark.get;
 import static spark.SparkBase.staticFileLocation;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ import discovery.request.ColumnRequest;
 import discovery.request.DataRequest;
 import discovery.request.OrderRequest;
 import discovery.request.SearchRequest;
+import discovery.table.FakeInMemoryTable;
 
 public class Server {
   private static final String PARAM_PREFIX = ":";
@@ -64,16 +66,14 @@ public class Server {
   private static final String TABLE_ID = "tableid";
   private static final String DRAW = "draw";
 
-  // Map<String, String[]> parameterMap = new
-  // TreeMap<>(req.raw().getParameterMap());
-  // for (Entry<String, String[]> e : parameterMap.entrySet()) {
-  // System.out.println(e.getKey() + "=>" + Arrays.asList(e.getValue()));
-  // }
+  private final static Map<String, Table> tables = new ConcurrentHashMap<String, Table>();
 
   public static void main(String[] args) {
-    Map<String, Table> tables = new ConcurrentHashMap<String, Table>();
-    tables.put("12345", new Table());
-    tables.put("cool", new Table());
+
+    register(new FakeInMemoryTable("12345", Arrays.asList("col0", "col1", "col2")));
+    register(new FakeInMemoryTable("col", Arrays.asList("col0", "col1", "col2")));
+    TableListTable indexTable = new TableListTable(tables);
+    register(indexTable);
 
     staticFileLocation("/webapp");
     get(DATA_SOURCE_URL + PARAM_PREFIX + TABLE_ID, (req, res) -> {
@@ -88,7 +88,14 @@ public class Server {
       Map<String, Object> attributes = getAttributes(table);
       return new ModelAndView(attributes, TABLE_FTL);
     }, new FreeMarkerEngine());
+    get("/", (req, res) -> {
+      Map<String, Object> attributes = getAttributes(indexTable);
+      return new ModelAndView(attributes, TABLE_FTL);
+    }, new FreeMarkerEngine());
+  }
 
+  private static void register(Table table) {
+    tables.put(table.getTableId(), table);
   }
 
   private static Map<String, Object> getAttributes(Table table) {
@@ -130,7 +137,7 @@ public class Server {
     SearchRequest searchRequest = createSearchRequest(queryMap);
     List<ColumnRequest> columnRequests = createColumnRequestList(queryMap.get(COLUMNS));
     int length = queryMap.get(LENGTH).integerValue();
-    int start = queryMap.get(START).integerValue();
+    long start = queryMap.get(START).longValue();
     List<OrderRequest> orderRequests = createOrderRequestList(queryMap.get(ORDER));
     return new DataRequest(length, start, columnRequests, orderRequests, searchRequest);
   }

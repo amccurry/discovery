@@ -16,42 +16,48 @@
  */
 package discovery;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import discovery.request.DataRequest;
 
 public abstract class Table {
 
+  private static final String DATA = "data";
+  private static final String DT_ROW_ID = "DT_RowId";
+  private static final String RECORDS_FILTERED = "recordsFiltered";
+  private static final String RECORDS_TOTAL = "recordsTotal";
+
   public abstract long getRecordTotal();
 
   public abstract List<String> getColumnNames();
 
-  public JSONObject handleRequest(DataRequest dataRequest) {
-    JSONObject response = new JSONObject();
-    response.put("recordsTotal", getRecordTotal());
-    response.put("recordsFiltered", 1000000000000L);
-    JSONArray data = new JSONArray();
-    for (long l = 0; l < 10; l++) {
-      JSONObject record = new JSONObject();
-      record.put("DT_RowId", "row_" + l);
-      record.put("DT_RowData", getKey(Long.toString(l)));
-      record.put("col0", "val");
-      record.put("col1", "val");
-      data.put(record);
-    }
-    response.put("data", data);
-    return response;
-  }
-
-  private static JSONObject getKey(String key) {
-    JSONObject object = new JSONObject();
-    object.put("k", key);
-    return object;
-  }
+  public abstract DiscoveryResultSet executeRequest(DataRequest dataRequest);
 
   public abstract String getTableId();
+
+  public JSONObject handleRequest(DataRequest dataRequest) throws JSONException, IOException {
+    DiscoveryResultSet resultSet = executeRequest(dataRequest);
+    JSONObject response = new JSONObject();
+    response.put(RECORDS_TOTAL, getRecordTotal());
+    response.put(RECORDS_FILTERED, resultSet.getRecordCount());
+    JSONArray data = new JSONArray();
+    while (resultSet.next()) {
+      String rowId = resultSet.getRowId();
+      List<String> columnNames = resultSet.getColumnNames();
+      JSONObject record = new JSONObject();
+      record.put(DT_ROW_ID, rowId);
+      for (String columnName : columnNames) {
+        record.put(columnName, resultSet.getColumnValue(columnName));
+      }
+      data.put(record);
+    }
+    response.put(DATA, data);
+    return response;
+  }
 
 }

@@ -22,12 +22,12 @@ import java.util.List;
 public class DataRequest {
 
   private final int length;
-  private final int start;
+  private final long start;
   private final List<ColumnRequest> columnRequests;
   private final List<OrderRequest> orderRequests;
   private final SearchRequest searchRequest;
 
-  public DataRequest(int length, int start, List<ColumnRequest> columnRequests, List<OrderRequest> orderRequests,
+  public DataRequest(int length, long start, List<ColumnRequest> columnRequests, List<OrderRequest> orderRequests,
       SearchRequest searchRequest) {
     this.length = length;
     this.start = start;
@@ -40,7 +40,7 @@ public class DataRequest {
     return length;
   }
 
-  public int getStart() {
+  public long getStart() {
     return start;
   }
 
@@ -64,7 +64,7 @@ public class DataRequest {
     result = prime * result + length;
     result = prime * result + ((orderRequests == null) ? 0 : orderRequests.hashCode());
     result = prime * result + ((searchRequest == null) ? 0 : searchRequest.hashCode());
-    result = prime * result + start;
+    result = prime * result + (int) (start ^ (start >>> 32));
     return result;
   }
 
